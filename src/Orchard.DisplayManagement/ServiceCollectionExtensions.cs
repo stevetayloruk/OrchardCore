@@ -8,6 +8,7 @@ using Orchard.DisplayManagement.Descriptors.ShapePlacementStrategy;
 using Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy;
 using Orchard.DisplayManagement.Events;
 using Orchard.DisplayManagement.Extensions;
+using Orchard.DisplayManagement.Handlebars;
 using Orchard.DisplayManagement.Implementation;
 using Orchard.DisplayManagement.Layout;
 using Orchard.DisplayManagement.LocationExpander;
@@ -57,6 +58,7 @@ namespace Orchard.DisplayManagement
         {
             services.AddScoped<IShapeTemplateHarvester, BasicShapeTemplateHarvester>();
             services.AddScoped<IShapeTemplateViewEngine, RazorShapeTemplateViewEngine>();
+            services.AddScoped<IShapeTemplateViewEngine, HandlebarsShapeTemplateViewEngine>();
             services.AddTransient<IShapeTableManager, DefaultShapeTableManager>();
 
             services.AddScoped<IShapeTableProvider, ShapeAttributeBindingStrategy>();
