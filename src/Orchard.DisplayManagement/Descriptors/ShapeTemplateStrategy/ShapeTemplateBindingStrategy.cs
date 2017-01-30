@@ -3,13 +3,17 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orchard.DisplayManagement.Implementation;
 using Orchard.Environment.Extensions;
 using Orchard.Environment.Extensions.Features;
 using Orchard.Environment.Shell;
@@ -154,14 +158,11 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
                             feature.Id);
                     }
 
-                    var fileExtension = Path.GetExtension(hit.shapeContext.harvestShapeInfo.RelativePath);
-                    var viewEngine = _shapeTemplateViewEngines.FirstOrDefault(e => e.TemplateFileExtensions.Contains(fileExtension));
-
                     builder.Describe(iter.shapeContext.harvestShapeHit.ShapeType)
                         .From(feature)
                         .BoundAs(
                             hit.shapeContext.harvestShapeInfo.RelativePath, shapeDescriptor => displayContext =>
-                                viewEngine.RenderAsync(hit.shapeContext.harvestShapeInfo.RelativePath, displayContext));
+                                RenderAsync(hit.shapeContext.harvestShapeInfo.RelativePath, displayContext));
                 }
             }
 
@@ -169,6 +170,13 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
             {
                 _logger.LogInformation("Done discovering shapes");
             }
+        }
+
+        private static async Task<IHtmlContent> RenderAsync(string relativePath, DisplayContext displayContext)
+        {
+            return await displayContext.ServiceProvider.GetService<IEnumerable<IShapeTemplateViewEngine>>()
+                .FirstOrDefault(e => e.TemplateFileExtensions.Contains(Path.GetExtension(relativePath)))
+                .RenderAsync(relativePath, displayContext);
         }
     }
 }
