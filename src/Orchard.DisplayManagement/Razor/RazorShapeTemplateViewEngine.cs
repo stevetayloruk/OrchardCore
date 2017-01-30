@@ -9,13 +9,12 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc.ViewFeatures.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Orchard.DisplayManagement.Descriptors;
 using Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy;
 using Orchard.DisplayManagement.Implementation;
 
 namespace Orchard.DisplayManagement.Razor
 {
-    public class RazorShapeTemplateViewEngine : IRazorShapeTemplateViewEngine
+    public class RazorShapeTemplateViewEngine : IShapeTemplateViewEngine
     {
         private readonly IOptions<MvcViewOptions> _viewEngine;
 
@@ -28,31 +27,31 @@ namespace Orchard.DisplayManagement.Razor
         public IEnumerable<string> TemplateFileExtensions
         {
             get {
-                return new[] { "cshtml" };
+                return new[] { ".cshtml" };
             }
         }
 
-        public async Task<IHtmlContent> RenderAsync(ShapeDescriptor shapeDescriptor, DisplayContext displayContext, HarvestShapeInfo harvestShapeInfo)
+        public async Task<IHtmlContent> RenderAsync(string relativePath, DisplayContext displayContext)
         {
-            IHtmlContent result;
+            var viewName = "/" + relativePath;
+
             if (displayContext.ViewContext.View != null)
             {
                 var htmlHelper = MakeHtmlHelper(displayContext.ViewContext, displayContext.ViewContext.ViewData);
-                result = htmlHelper.Partial(harvestShapeInfo.TemplateVirtualPath, displayContext.Value);
+                return htmlHelper.Partial(viewName, displayContext.Value);
             }
             else
             {
                 // If the View is null, it means that the shape is being executed from a non-view origin / where no ViewContext was established by the view engine, but manually.
                 // Manually creating a ViewContext works when working with Shape methods, but not when the shape is implemented as a Razor view template.
                 // Horrible, but it will have to do for now.
-                result = await RenderRazorViewAsync(harvestShapeInfo.TemplateVirtualPath, displayContext);
+                return await RenderRazorViewAsync(viewName, displayContext);
             }
-            return result;
         }
 
-        private async Task<IHtmlContent> RenderRazorViewAsync(string path, DisplayContext context)
+        private async Task<IHtmlContent> RenderRazorViewAsync(string viewName, DisplayContext context)
         {
-            var viewEngineResult = _viewEngine.Value.ViewEngines.First().FindView(context.ViewContext, path, isMainPage: false);
+            var viewEngineResult = _viewEngine.Value.ViewEngines.First().FindView(context.ViewContext, viewName, isMainPage: false);
             if (viewEngineResult.Success)
             {
                 var bufferScope = context.ViewContext.HttpContext.RequestServices.GetRequiredService<IViewBufferScope>();

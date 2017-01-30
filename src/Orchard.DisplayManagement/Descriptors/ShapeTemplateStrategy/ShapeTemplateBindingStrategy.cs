@@ -3,20 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.AspNetCore.Mvc.ViewFeatures.Internal;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Orchard.DisplayManagement.Implementation;
 using Orchard.Environment.Extensions;
 using Orchard.Environment.Extensions.Features;
 using Orchard.Environment.Shell;
@@ -29,7 +22,6 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
 
         private readonly IEnumerable<IShapeTemplateHarvester> _harvesters;
         private readonly IEnumerable<IShapeTemplateViewEngine> _shapeTemplateViewEngines;
-        private readonly IOptions<MvcViewOptions> _viewEngine;
         private readonly IHostingEnvironment _hostingEnvironment;
         private readonly ILogger _logger;
         private readonly IShellFeaturesManager _shellFeaturesManager;
@@ -45,7 +37,6 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
             _harvesters = harvesters;
             _shellFeaturesManager = shellFeaturesManager;
             _shapeTemplateViewEngines = shapeTemplateViewEngines;
-            _viewEngine = options;
             _hostingEnvironment = hostingEnvironment;
             _logger = logger;
         }
@@ -77,7 +68,7 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
             var matcher = new Matcher();
             foreach (var extension in _shapeTemplateViewEngines.SelectMany(x => x.TemplateFileExtensions))
             {
-                matcher.AddInclude(string.Format("*.{0}", extension));
+                matcher.AddInclude(string.Format("*{0}", extension));
             }
 
             var hits = activeExtensions.Select(extensionDescriptor =>
@@ -94,7 +85,7 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
 
                     var directoryInfo = new DirectoryInfo(subPathFileInfo.PhysicalPath);
 
-                    var virtualPath = Path.Combine(extensionDescriptor.SubPath, subPath);
+                    var relativePath = Path.Combine(extensionDescriptor.SubPath, subPath);
 
                     if (!directoryInfo.Exists)
                     {
@@ -102,7 +93,7 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
                         {
                             harvesterInfo.harvester,
                             subPath,
-                            virtualPath,
+                            relativePath,
                             files = new IFileInfo[0]
                         };
                     }
@@ -115,7 +106,7 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
                         .Select(match => _hostingEnvironment
                             .GetExtensionFileInfo(extensionDescriptor, Path.Combine(subPath, match.Path))).ToArray();
 
-                    return new { harvesterInfo.harvester, subPath, virtualPath, files };
+                    return new { harvesterInfo.harvester, subPath, relativePath, files };
                 })).ToList();
 
                 if (_logger.IsEnabled(LogLevel.Information))
@@ -128,8 +119,7 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
                         file => new
                         {
                             fileName = Path.GetFileNameWithoutExtension(file.Name),
-                            fileVirtualPath = "~/" + Path.Combine(pathContext.virtualPath, file.Name),
-                            physicalPath = file.PhysicalPath,
+                            relativePath = Path.Combine(pathContext.relativePath, file.Name),
                             pathContext
                         });
                 }));
@@ -140,8 +130,7 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
                     {
                         SubPath = fileContext.pathContext.subPath,
                         FileName = fileContext.fileName,
-                        TemplateVirtualPath = fileContext.fileVirtualPath,
-                        PhysicalPath = fileContext.physicalPath
+                        RelativePath = fileContext.relativePath
                     };
                     var harvestShapeHits = fileContext.pathContext.harvester.HarvestShape(harvestShapeInfo);
                     return harvestShapeHits.Select(harvestShapeHit => new { harvestShapeInfo, harvestShapeHit, fileContext });
@@ -160,19 +149,19 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
                     if (_logger.IsEnabled(LogLevel.Debug))
                     {
                         _logger.LogDebug("Binding {0} as shape [{1}] for feature {2}",
-                            hit.shapeContext.harvestShapeInfo.TemplateVirtualPath,
+                            hit.shapeContext.harvestShapeInfo.RelativePath,
                             iter.shapeContext.harvestShapeHit.ShapeType,
                             feature.Id);
                     }
 
-                    var fileExtension = Path.GetExtension(hit.shapeContext.harvestShapeInfo.TemplateVirtualPath).TrimStart('.');
+                    var fileExtension = Path.GetExtension(hit.shapeContext.harvestShapeInfo.RelativePath);
                     var viewEngine = _shapeTemplateViewEngines.FirstOrDefault(e => e.TemplateFileExtensions.Contains(fileExtension));
 
                     builder.Describe(iter.shapeContext.harvestShapeHit.ShapeType)
                         .From(feature)
                         .BoundAs(
-                            hit.shapeContext.harvestShapeInfo.TemplateVirtualPath,
-                            shapeDescriptor => displayContext => viewEngine.RenderAsync(shapeDescriptor, displayContext, hit.shapeContext.harvestShapeInfo));
+                            hit.shapeContext.harvestShapeInfo.RelativePath, shapeDescriptor => displayContext =>
+                                viewEngine.RenderAsync(hit.shapeContext.harvestShapeInfo.RelativePath, displayContext));
                 }
             }
 

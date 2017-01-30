@@ -8,14 +8,6 @@ namespace Orchard.DisplayManagement.Descriptors.ShapeTemplateStrategy
     public interface IShapeTemplateViewEngine
     {
         IEnumerable<string> TemplateFileExtensions { get; }
-        Task<IHtmlContent> RenderAsync(ShapeDescriptor shapeDescriptor, DisplayContext displayContext, HarvestShapeInfo harvestShapeInfo);
-    }
-
-    public interface IRazorShapeTemplateViewEngine : IShapeTemplateViewEngine
-    {
-    }
-
-    public interface IHandlebarsShapeTemplateViewEngine : IShapeTemplateViewEngine
-    {
+        Task<IHtmlContent> RenderAsync(string relativePath, DisplayContext displayContext);
     }
 }
