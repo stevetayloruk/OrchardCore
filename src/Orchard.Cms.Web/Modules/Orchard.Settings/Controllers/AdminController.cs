@@ -6,6 +6,8 @@ using Orchard.DisplayManagement.ModelBinding;
 using Orchard.DisplayManagement.Notify;
 using Orchard.Settings.Services;
 using Orchard.Settings.ViewModels;
+using Orchard.Hosting;
+using Orchard.Environment.Shell;
 
 namespace Orchard.Settings.Controllers
 {
@@ -13,6 +15,8 @@ namespace Orchard.Settings.Controllers
     {
         private readonly ISiteSettingsDisplayManager _siteSettingsDisplayManager;
         private readonly ISiteService _siteService;
+        private readonly IOrchardHost _orchardHost;
+        private readonly ShellSettings _shellSettings;
         private readonly INotifier _notifier;
         private readonly IAuthorizationService _authorizationService;
 
@@ -20,11 +24,15 @@ namespace Orchard.Settings.Controllers
             ISiteService siteService,
             ISiteSettingsDisplayManager siteSettingsDisplayManager,
             IAuthorizationService authorizationService,
+            IOrchardHost orchardHost,
+            ShellSettings shellSettings,
             INotifier notifier,
             IHtmlLocalizer<AdminController> h)
         {
             _siteSettingsDisplayManager = siteSettingsDisplayManager;
             _siteService = siteService;
+            _orchardHost = orchardHost;
+            _shellSettings = shellSettings;
             _notifier = notifier;
             _authorizationService = authorizationService;
             H = h;
@@ -34,7 +42,7 @@ namespace Orchard.Settings.Controllers
 
         public async Task<IActionResult> Index(string groupId)
         {
-            if (! await _authorizationService.AuthorizeAsync(User, Permissions.ManageSettings))
+            if (!await _authorizationService.AuthorizeAsync(User, Permissions.ManageSettings))
             {
                 return Unauthorized();
             }
@@ -43,7 +51,7 @@ namespace Orchard.Settings.Controllers
 
             viewModel.GroupId = groupId;
             viewModel.Shape = await _siteSettingsDisplayManager.BuildEditorAsync(this, groupId);
-            
+
             return View(viewModel);
         }
 
@@ -67,11 +75,34 @@ namespace Orchard.Settings.Controllers
                 await _siteService.UpdateSiteSettingsAsync(siteSettings);
 
                 _notifier.Success(H["Site settings updated successfully."]);
-                
+
                 return RedirectToAction(nameof(Index), new { groupId });
             }
 
             return View(viewModel);
+        }
+
+        public async Task<IActionResult> RestartSite()
+        {
+            if (!await _authorizationService.AuthorizeAsync(User, Permissions.Restart))
+            {
+                return Unauthorized();
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        [ActionName(nameof(RestartSite))]
+        public async Task<IActionResult> RestartSitePost()
+        {
+            if (!await _authorizationService.AuthorizeAsync(User, Permissions.ManageSettings))
+            {
+                return Unauthorized();
+            }
+            _orchardHost.ReloadShellContext(_shellSettings);
+
+            return Redirect("~/admin");
         }
     }
 }
