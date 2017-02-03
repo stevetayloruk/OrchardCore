@@ -74,8 +74,10 @@ $(function () {
         // Expand the section if necessary
         var target = $($(this).data('target'));
         if ($(this).prop('checked')) {
-            target.addClass('in');
+            target.addClass('active');
         }
+        target.addClass('collapse');        
+        target.collapse($(this).prop('checked') ? 'show' : 'hide');
 
         $(this).on('change', function (e) {
             // During a double-click, ignore state changes while the element is collapsing
@@ -89,7 +91,7 @@ $(function () {
 });
 
 $(function () {
-    $('input[data-toggle="collapse in"]').each(function () {
+    $('input[data-toggle="collapse active"]').each(function () {
         // Prevent bootstrap from altering its behavior
         // c.f. https://github.com/twbs/bootstrap/issues/21079
         $(this).removeAttr("data-toggle");
@@ -97,8 +99,10 @@ $(function () {
         // Expand the section if necessary
         var target = $($(this).data('target'));
         if (!$(this).prop('checked')) {
-            target.addClass('in');
+            target.addClass('active');            
         }
+        target.addClass('collapse');
+        target.collapse($(this).prop('checked') ? 'hide' : 'show');
 
         $(this).on('change', function (e) {
             // During a double-click, ignore state changes while the element is collapsing
